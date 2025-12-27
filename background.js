@@ -11,7 +11,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
   if (!info.srcUrl.startsWith("file://")) {
     const url =
       "https://www.google.com/searchbyimage?image_url=" +
-      info.srcUrl +
+      encodeURIComponent(info.srcUrl) +
       "&client=app";
 
     browser.tabs.create({ url });
