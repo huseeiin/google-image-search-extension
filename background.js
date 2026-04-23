@@ -7,18 +7,21 @@ browser.contextMenus.create({
 browser.contextMenus.onClicked.addListener((info, tab) => {
   if (!info.srcUrl) return;
 
-  // remote image - simple GET
-  if (!info.srcUrl.startsWith("file://")) {
+  // local file OR localhost → upload via content script
+  const isLocal =
+    info.srcUrl.startsWith("file://") ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?[\/]/.test(info.srcUrl);
+
+  if (!isLocal) {
     const url =
       "https://www.google.com/searchbyimage?image_url=" +
       encodeURIComponent(info.srcUrl) +
       "&client=app";
-
     browser.tabs.create({ url });
     return;
   }
 
-  // local image - ask content script to fetch blob
+  // local file or localhost → ask content script to fetch blob
   browser.tabs.sendMessage(tab.id, {
     type: "UPLOAD_LOCAL_IMAGE",
     srcUrl: info.srcUrl,
@@ -27,15 +30,12 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 
 browser.runtime.onMessage.addListener(async (msg) => {
   if (msg.type !== "LOCAL_IMAGE_BLOB") return;
-
   const form = new FormData();
   form.set("encoded_image", msg.blob);
   form.set("sbisrc", "Firefox");
-
   const res = await fetch("https://www.google.com/searchbyimage/upload", {
     method: "POST",
     body: form,
   });
-
   browser.tabs.create({ url: res.url });
 });
